@@ -1,0 +1,137 @@
+================================================================================
+                    LINUX ENVIRONMENT VERIFICATION REPORT
+================================================================================
+Student Name: Vansh Jagetia
+Date: July 03, 2026
+
+--------------------------------------------------------------------------------
+Objective
+--------------------------------------------------------------------------------
+The objective of this report is to systematically verify the current Linux/Unix 
+environment setup, verifying user identity, group affiliations, shell 
+environment, directory structure, and basic network connectivity. This ensures 
+readiness for administrative and development tasks.
+
+--------------------------------------------------------------------------------
+System Environment Verification
+--------------------------------------------------------------------------------
+
+1. Username
+Command Executed: 
+whoami
+
+Purpose: 
+To determine the currently logged-in user on the system.
+
+Actual Output:
+vanshjagetia
+
+Observation:
+The system returned 'vanshjagetia' as the active user session.
+
+Explanation:
+The `whoami` command prints the effective username of the current user. It is essential for verifying permissions and auditing actions performed on the system. Knowing the active user ensures you are operating with the correct privileges before making system changes.
+
+--------------------------------------------------------------------------------
+2. User Groups
+Command Executed: 
+groups
+
+Purpose: 
+To determine every group the current user belongs to.
+
+Actual Output:
+staff everyone localaccounts _appserverusr admin _appserveradm _appstore _lpadmin _lpoperator _developer _analyticsusers com.apple.access_ftp com.apple.access_screensharing com.apple.access_ssh com.apple.access_remote_ae com.apple.sharepoint.group.1
+
+Observation:
+The user 'vanshjagetia' belongs to multiple groups, most notably the 'admin' and 'staff' groups, which dictate their level of access.
+
+Explanation:
+Linux groups are fundamental to access control, allowing multiple users to share permissions for files and directories. Instead of assigning permissions to users individually, administrators can assign a user to a group, thereby granting them all the privileges associated with that group. This simplifies system administration and enhances security.
+
+--------------------------------------------------------------------------------
+3. Current Shell
+Command Executed: 
+echo $SHELL
+
+Purpose: 
+To determine the current shell being used for the session.
+
+Actual Output:
+/bin/zsh
+
+Observation:
+The output indicates that the Z Shell (zsh) is the default command-line interpreter for this session.
+
+Explanation:
+The shell in Linux acts as the interface between the user and the kernel. It interprets the commands typed in the terminal, executes programs, and returns the output. The environment variable $SHELL holds the path to the default shell configured for the logged-in user.
+
+--------------------------------------------------------------------------------
+4. Present Working Directory
+Command Executed: 
+pwd
+
+Purpose: 
+To determine the current working directory in the file system.
+
+Actual Output:
+/Users/vanshjagetia/Desktop/Bits Assignment/Question1
+
+Observation:
+The terminal is currently located within the 'Question1' folder of the 'Bits Assignment' directory on the Desktop.
+
+Explanation:
+The working directory represents the current location within the file system hierarchy where the shell is executing commands. Any relative file paths used in commands will be resolved starting from this directory. It provides context for file operations such as reading, writing, and executing scripts.
+
+--------------------------------------------------------------------------------
+5. Files and Directories
+Command Executed: 
+ls -la
+
+Purpose: 
+To list all files and directories, including hidden ones, with their detailed permissions.
+
+Actual Output:
+total 0
+drwxr-xr-x@ 5 vanshjagetia  staff  160 Jul  3 21:45 .
+drwxr-xr-x  8 vanshjagetia  staff  256 Jul  3 21:45 ..
+-rw-r--r--@ 1 vanshjagetia  staff    0 Jul  3 21:45 Environment_Report.txt
+-rw-r--r--@ 1 vanshjagetia  staff    0 Jul  3 21:45 commands.txt
+drwxr-xr-x@ 2 vanshjagetia  staff   64 Jul  3 21:45 screenshots
+
+Observation:
+The output displays the contents of the current directory, showing the read, write, and execute permissions, owner (vanshjagetia), group (staff), file sizes, modification dates, and names.
+
+Explanation:
+The `ls -la` command provides a long format listing (`-l`) of all files, including hidden ones (`-a`). The first column shows file types and permissions (e.g., 'd' for directory, 'r' for read, 'w' for write, 'x' for execute). The subsequent columns represent the number of links, owner name, group name, file size in bytes, last modification timestamp, and the file or directory name.
+
+--------------------------------------------------------------------------------
+6. Network Connectivity Verification
+Command Executed: 
+ping -c 4 8.8.8.8
+
+Purpose: 
+To verify internet connectivity by sending ICMP echo requests to a public DNS server.
+
+Actual Output:
+PING 8.8.8.8 (8.8.8.8): 56 data bytes
+64 bytes from 8.8.8.8: icmp_seq=0 ttl=116 time=143.639 ms
+64 bytes from 8.8.8.8: icmp_seq=1 ttl=116 time=150.952 ms
+64 bytes from 8.8.8.8: icmp_seq=2 ttl=116 time=18.975 ms
+64 bytes from 8.8.8.8: icmp_seq=3 ttl=116 time=18.599 ms
+
+--- 8.8.8.8 ping statistics ---
+4 packets transmitted, 4 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 18.599/83.041/150.952/64.306 ms
+
+Observation:
+The network test successfully sent and received all packets without any loss, confirming active internet connectivity.
+
+Explanation:
+The `ping` command tests network reachability. In this test, 4 packets were transmitted, and 4 packets were successfully received, resulting in a 0.0% packet loss. The round trip time (RTT) measures the time it takes for a packet to reach the destination and return. The statistics show the minimum, average, maximum, and standard deviation of the RTT, providing insight into network latency and stability.
+
+--------------------------------------------------------------------------------
+Conclusion
+--------------------------------------------------------------------------------
+The environment verification confirms that the user session is properly authenticated with correct group privileges. The file system and shell environment are functioning as expected. Furthermore, network connectivity is stable and actively routing traffic. The system is fully prepared for subsequent administration and development tasks.
+================================================================================
