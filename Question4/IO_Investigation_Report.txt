@@ -1,0 +1,141 @@
+================================================================================
+                    FILE ACCESS AND I/O INVESTIGATION REPORT
+================================================================================
+Student Name: Vansh Jagetia
+Date: July 03, 2026
+
+--------------------------------------------------------------------------------
+Objective
+--------------------------------------------------------------------------------
+The objective of this report is to investigate how the Linux/Unix operating system manages file access, file descriptors, output/error redirection, and resource limits. This practical investigation provides the foundational knowledge required to troubleshoot logging problems, application I/O bottlenecks, and resource constraints on Linux servers.
+
+--------------------------------------------------------------------------------
+Scenario
+--------------------------------------------------------------------------------
+An application running on a Linux server is experiencing logging problems. The operations team suspects that file access, file descriptors, output redirection, or resource limits may be responsible. As a Linux Support Engineer, this investigation was conducted to analyze standard streams, track open files, demonstrate data redirection, and inspect system limits.
+
+--------------------------------------------------------------------------------
+1. File Creation
+--------------------------------------------------------------------------------
+Command Executed:
+mkdir -p experiment screenshots
+touch experiment/logfile.txt experiment/output.txt experiment/error.txt experiment/combined_output.txt experiment/sample_input.txt
+
+Observation:
+The foundational experiment files were created without error. 
+
+Explanation:
+Linux applications write to files continuously to persist state, record events, and track errors. Log files are universally used because they offer non-volatile audit trails. If an application crashes, the operations team relies on the log file to understand the sequence of events leading up to the failure.
+
+--------------------------------------------------------------------------------
+2 & 3. Open File Investigation (lsof)
+--------------------------------------------------------------------------------
+Command Executed:
+tail -f experiment/logfile.txt &
+lsof -p <PID> | grep logfile.txt
+
+Actual Output:
+tail    25241 vanshjagetia    3r     REG               1,13        0            37756408 /Users/vanshjagetia/Desktop/Bits Assignment/Question4/experiment/logfile.txt
+
+Observation:
+The `tail` command (Process ID 25241) is currently running and has an open connection to `logfile.txt`.
+
+Explanation:
+- **What open files are**: When a process reads or writes to a file, it "opens" it, establishing a direct connection between the process memory space and the file's inode on disk.
+- **How Linux tracks them**: The kernel maintains a File Table that keeps track of every open file across the entire system.
+- **Process Association**: In the `lsof` output, we see the command name (`tail`), the PID (`25241`), the User (`vanshjagetia`), the File Descriptor (`3r` for read), the File Type (`REG` for regular file), the Device, the Inode (`37756408`), and the absolute Path. This proves exactly which process is locking or interacting with a specific file.
+
+--------------------------------------------------------------------------------
+4. File Descriptor Analysis
+--------------------------------------------------------------------------------
+Command Executed:
+ls -l /dev/fd
+
+Actual Output:
+total 0
+pr--r-----  0 vanshjagetia  staff    0 Jul  3 22:43 0
+p-w--w----  0 vanshjagetia  staff    0 Jul  3 22:43 1
+p-w--w----  0 vanshjagetia  staff    0 Jul  3 22:43 2
+dr--r--r--  6 vanshjagetia  staff  192 Jul  3 22:43 3
+
+Observation:
+Every process automatically opens file descriptors 0, 1, and 2.
+
+Explanation:
+A File Descriptor (FD) is a unique integer that the operating system assigns to an open file. It acts as an abstract handle for the application to interact with I/O resources.
+- **Descriptor 0 (Standard Input - stdin)**: Where the program reads its input from (usually the keyboard).
+- **Descriptor 1 (Standard Output - stdout)**: Where the program writes its normal output (usually the terminal screen).
+- **Descriptor 2 (Standard Error - stderr)**: Where the program writes error messages. By separating errors from normal output, users can redirect them independently.
+Additional file descriptors (like `3`) are dynamically assigned by the kernel when the application opens files, network sockets, or pipes.
+
+--------------------------------------------------------------------------------
+5. Output Redirection
+--------------------------------------------------------------------------------
+Commands Executed:
+echo "Line 1" > experiment/output.txt
+echo "Line 2" >> experiment/output.txt
+cat experiment/output.txt
+
+Actual Output:
+Line 1
+Line 2
+
+Explanation:
+- **Overwrite (`>`)**: Replaces the entire contents of the target file with the new output. Useful when you only care about the absolute latest data.
+- **Append (`>>`)**: Adds the new output to the very end of the file without deleting existing data. This is how log files function in the real world, ensuring historical data is preserved.
+
+--------------------------------------------------------------------------------
+6. Error Redirection
+--------------------------------------------------------------------------------
+Commands Executed:
+ls non_existent_file 2> experiment/error.txt
+cat experiment/error.txt
+
+Actual Output:
+ls: non_existent_file: No such file or directory
+
+Explanation:
+By default, standard error prints to the screen. Using `2>` targets file descriptor 2 (stderr) and redirects only the error messages to a file. This is a crucial best practice in production debugging; it prevents error messages from cluttering the user interface while persistently logging them for engineers to review later.
+
+--------------------------------------------------------------------------------
+7. Combined Output
+--------------------------------------------------------------------------------
+Command Executed:
+ls / experiment/non_existent_file > experiment/combined_output.txt 2>&1
+
+Actual Output (Head):
+ls: experiment/non_existent_file: No such file or directory
+/:
+
+Explanation:
+The syntax `2>&1` instructs the shell to route standard error (2) into the exact same location as standard output (1). This is widely used for daemon processes and background jobs where an administrator needs a single, unified log file detailing every event in chronological order, regardless of whether it was a success message or an error.
+
+--------------------------------------------------------------------------------
+8. Resource Limits
+--------------------------------------------------------------------------------
+Command Executed:
+ulimit -a
+
+Actual Output (Snippet):
+-t: cpu time (seconds)              unlimited
+-f: file size (blocks)              unlimited
+-s: stack size (kbytes)             8176
+-u: processes                       2666
+-n: file descriptors                1048575
+
+Observation:
+The system places limits on processes, memory, and file descriptors to prevent resource exhaustion. For instance, a maximum of 1,048,575 file descriptors are allowed per process.
+
+Explanation:
+- **Maximum Open Files (`-n`)**: Dictates how many files/sockets a single process can open. If a web server hits this limit, it will crash with a "Too many open files" error.
+- **Stack Size (`-s`)**: Limits the amount of memory allocated for a program's execution stack.
+- **File Size (`-f`)**: Prevents a runaway process from generating a log file so large that it consumes the entire hard drive.
+Understanding and tuning these limits is essential for high-performance server administration.
+
+--------------------------------------------------------------------------------
+Technical Analysis & Conclusion
+--------------------------------------------------------------------------------
+Linux operates on the paradigm that "Everything is a file." Whether an application is writing to a text file, a network socket, or a hardware device, it uses the exact same `open()`, `read()`, `write()`, and `close()` system calls utilizing File Descriptors. 
+
+This experiment successfully demonstrated that logging problems often stem from either (A) hitting resource limits (`ulimit -n`), (B) improperly directing `stdout`/`stderr`, or (C) orphaned processes holding files open (`lsof`). By mastering file descriptor management, administrators can ensure applications execute robustly and log data securely.
+================================================================================

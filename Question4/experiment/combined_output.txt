@@ -1,0 +1,18 @@
+ls: experiment/non_existent_file: No such file or directory
+/:
+Applications
+Library
+System
+Users
+Volumes
+bin
+cores
+dev
+etc
+home
+opt
+private
+sbin
+tmp
+usr
+var
