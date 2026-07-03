@@ -1,0 +1,110 @@
+================================================================================
+                    STORAGE HEALTH ASSESSMENT REPORT
+================================================================================
+Student Name: Vansh Jagetia
+Date: July 03, 2026
+
+--------------------------------------------------------------------------------
+Objective
+--------------------------------------------------------------------------------
+The objective of this assessment is to comprehensively inspect the physical storage subsystem, mounted filesystems, capacity utilization, and disk health of the Linux/Unix server prior to a major application deployment. This ensures sufficient resources exist and identifies potential hardware degradation before it impacts production stability.
+
+--------------------------------------------------------------------------------
+Scenario
+--------------------------------------------------------------------------------
+An organization is preparing to deploy a new Linux application server. As a Linux Support Engineer, this investigation was conducted to audit the current storage state, utilizing standard system utilities to measure disk space (`df -h`), inode usage (`df -i`), partition layout (`diskutil`), and SMART hardware health. 
+
+--------------------------------------------------------------------------------
+1. Storage Device & Partition Analysis
+--------------------------------------------------------------------------------
+Command Executed:
+diskutil list
+
+Observations:
+The underlying hardware is an internal, physical solid-state drive (`disk0`) with a total capacity of 251.0 GB. 
+The drive utilizes a GUID Partition Scheme and is sliced into multiple containers:
+- `disk0s1`: Apple_APFS_ISC (524.3 MB)
+- `disk0s2`: Apple_APFS (245.1 GB) - The primary synthesized storage container (`disk2`).
+- `disk0s3`: Apple_APFS_Recovery (5.4 GB)
+
+Explanation:
+Physical disks (like `disk0`) represent the actual hardware device. Partitions (like `disk0s2`) are logical boundaries drawn on that disk to separate data. The OS synthesizes these partitions into usable volumes (e.g., `Macintosh HD`).
+
+--------------------------------------------------------------------------------
+2. Mounted Filesystem Analysis
+--------------------------------------------------------------------------------
+Command Executed:
+mount | head -n 5
+
+Actual Output:
+/dev/disk2s1s1 on / (apfs, sealed, local, read-only, journaled)
+devfs on /dev (devfs, local, nobrowse)
+/dev/disk2s6 on /System/Volumes/VM (apfs, local, noexec, journaled, noatime, nobrowse)
+
+Observations:
+The root filesystem (`/`) is mounted as read-only and sealed, providing robust security against unauthorized system modifications. Virtual filesystems like `devfs` are mounted on `/dev` to manage device nodes.
+
+Explanation:
+Mounting is the process of attaching a formatted filesystem to a specific directory (the mount point) in the overarching directory tree, making its files accessible to users and applications.
+
+--------------------------------------------------------------------------------
+3. Disk Usage Analysis
+--------------------------------------------------------------------------------
+Command Executed:
+df -h
+
+Actual Output (Snippet):
+Filesystem        Size    Used   Avail Capacity  Mounted on
+/dev/disk2s1s1   228Gi    16Gi    16Gi    50%    /
+/dev/disk2s5     228Gi   173Gi    16Gi    92%    /System/Volumes/Data
+
+Observations:
+The primary Data volume (`/System/Volumes/Data`) is currently at 92% capacity (173Gi Used, 16Gi Available). The root volume is at 50% capacity. 
+
+Explanation:
+The `df -h` command outputs storage metrics in human-readable formats (Gigabytes/Megabytes). Tracking this is critical for storage planning; the 92% utilization on the Data volume indicates that the disk is nearly full and requires immediate attention before the new application is deployed.
+
+--------------------------------------------------------------------------------
+4. Inode Utilization Analysis
+--------------------------------------------------------------------------------
+Command Executed:
+df -i
+
+Actual Output (Snippet):
+Filesystem     iused     ifree %iused  Mounted on
+/dev/disk2s1s1 458116 168959000    0%   /
+/dev/disk2s5  1889932 168959000    1%   /System/Volumes/Data
+
+Observations:
+Inode utilization is exceptionally healthy, resting at 0% to 1% across all major volumes. There are over 168 million free inodes available.
+
+Explanation:
+An inode is a data structure that stores metadata about a file. Every file consumes exactly one inode. It is entirely possible to have plenty of gigabytes free on a disk, but if the disk has millions of tiny 1-byte files, it can run out of inodes (`100% iused`). Once inodes are exhausted, the system cannot create new files, causing application crashes. 
+
+--------------------------------------------------------------------------------
+5. Storage Health Analysis (SMART)
+--------------------------------------------------------------------------------
+Command Executed:
+diskutil info disk0 | grep SMART
+
+Actual Output:
+   SMART Status:              Verified
+
+Observations:
+The drive's built-in Self-Monitoring, Analysis, and Reporting Technology (SMART) reports a "Verified" status. 
+
+Explanation:
+SMART is an internal hardware monitoring system that tracks metrics like bad sectors, temperature, and read/write error rates. A "Verified" or "Passed" status indicates the drive controller does not predict imminent hardware failure. Regular SMART monitoring is a vital preventive maintenance best practice.
+
+--------------------------------------------------------------------------------
+Recommendations & Conclusion
+--------------------------------------------------------------------------------
+Technical Conclusion:
+The storage subsystem is structurally sound and the hardware health is verified. However, the system is facing a severe capacity bottleneck on the primary Data volume (92% full). Inode availability is not a concern.
+
+Recommendations:
+1. **Storage Cleanup**: Immediately identify and purge large unnecessary files, old ISOs, and unused containers on `/System/Volumes/Data`.
+2. **Log Rotation**: Ensure system and application logs are aggressively rotated and compressed (using `logrotate`) to prevent further disk consumption.
+3. **Monitoring Tools**: Implement active monitoring (e.g., Prometheus/Grafana or Datadog) with alerting thresholds set at 80% and 90% disk utilization.
+4. **Backup Strategy**: Perform a full system backup before the new application deployment, ensuring data integrity if a partition resize or hardware upgrade becomes necessary.
+================================================================================
