@@ -1,0 +1,138 @@
+================================================================================
+                    FILE SYSTEM AND LINK ANALYSIS REPORT
+================================================================================
+Student Name: Vansh Jagetia
+Date: July 03, 2026
+
+--------------------------------------------------------------------------------
+Objective
+--------------------------------------------------------------------------------
+The objective of this report is to investigate the technical differences between hard links and symbolic (soft) links in the Linux/Unix filesystem. By deliberately deleting an original target file, this experiment demonstrates how inodes, metadata, and data blocks react, proving the resiliency of hard links and the fragility of soft links.
+
+--------------------------------------------------------------------------------
+Scenario
+--------------------------------------------------------------------------------
+A developer accidentally deleted an important file and wants to understand how Linux links work to recover or prevent future data loss. As a Linux Support Engineer, this investigation was conducted to explain Linux inodes, metadata, and link behavior under deletion scenarios.
+
+--------------------------------------------------------------------------------
+Experiment Setup
+--------------------------------------------------------------------------------
+Commands Executed:
+mkdir -p experiment screenshots
+echo "This is the original file containing confidential project data." > experiment/original.txt
+
+--------------------------------------------------------------------------------
+Original File Analysis
+--------------------------------------------------------------------------------
+Observation:
+The file `original.txt` is a standard regular file containing sample text. In Linux, creating this file allocates an inode (index node) that stores all its metadata, and assigns data blocks on the disk to store the text string. 
+
+--------------------------------------------------------------------------------
+Hard Link Analysis
+--------------------------------------------------------------------------------
+Command Executed:
+ln experiment/original.txt experiment/hardlink.txt
+
+Observation:
+The `hardlink.txt` file was created successfully. A hard link is a direct directory entry pointing to the exact same inode as the original file. It does not point to the *name* of the original file, but to the underlying data block. 
+- **Advantages**: If the original filename is deleted or moved, the hard link continues to function perfectly because the data blocks remain on disk as long as the link count is > 0.
+- **Limitations**: Hard links cannot span across different partitions or filesystems (because inodes are only unique per filesystem), and they cannot link to directories (to prevent infinite recursive loops).
+- **Use Cases**: Useful for reliable backup mechanisms (like `rsync` or Apple Time Machine) where duplicate files share the same storage space without risk of breaking if one copy is deleted.
+
+--------------------------------------------------------------------------------
+Symbolic Link Analysis
+--------------------------------------------------------------------------------
+Command Executed:
+cd experiment && ln -s original.txt softlink.txt
+
+Observation:
+The `softlink.txt` file was created. A symbolic link (or soft link) is an entirely separate file that stores a text string containing the *path* to the original file. 
+- **Advantages**: It can point across different filesystems, partitions, and can link to directories. 
+- **Limitations**: If the original target is deleted or renamed, the symbolic link breaks, becoming a "dangling" link.
+- **Use Cases**: Commonly used to link configuration files across directories, create shortcuts, or manage multiple versions of software (e.g., pointing `/usr/bin/python` to `/usr/bin/python3.9`).
+
+--------------------------------------------------------------------------------
+Inode Investigation
+--------------------------------------------------------------------------------
+Command Executed:
+ls -li experiment
+
+Actual Output:
+37752385 -rw-r--r--@ 2 vanshjagetia  staff  64 Jul  3 22:34 hardlink.txt
+37752385 -rw-r--r--@ 2 vanshjagetia  staff  64 Jul  3 22:34 original.txt
+37752388 lrwxr-xr-x@ 1 vanshjagetia  staff  12 Jul  3 22:34 softlink.txt -> original.txt
+
+Explanation:
+- `original.txt` and `hardlink.txt` share the exact same inode number (`37752385`). This mathematically proves they are essentially two names for the same physical data. Notice the link count (3rd column) is `2`.
+- `softlink.txt` has a distinct, uniquely allocated inode number (`37752388`). The file type is `l` (link), and it explicitly points to `original.txt`.
+
+--------------------------------------------------------------------------------
+Metadata Analysis
+--------------------------------------------------------------------------------
+Command Executed:
+stat -x experiment/original.txt
+
+Actual Output:
+  File: "experiment/original.txt"
+  Size: 64           FileType: Regular File
+  Mode: (0644/-rw-r--r--)         Uid: (  501/vanshjagetia)  Gid: (   20/   staff)
+Device: 1,13   Inode: 37752385    Links: 2
+Access: Fri Jul  3 22:34:06 2026
+Modify: Fri Jul  3 22:34:05 2026
+Change: Fri Jul  3 22:34:05 2026
+ Birth: Fri Jul  3 22:34:05 2026
+
+Explanation:
+Metadata is the "data about the data" stored in the inode. 
+- **Size**: 64 bytes.
+- **Uid/Gid**: User ID 501 (vanshjagetia) and Group ID 20 (staff).
+- **Links**: Shows `2`, confirming the hard link exists.
+- **Timestamps**: Tracks when the file was accessed, modified (content changed), and changed (metadata/permissions changed).
+
+--------------------------------------------------------------------------------
+Deletion Experiment
+--------------------------------------------------------------------------------
+Commands Executed:
+rm experiment/original.txt
+ls -li experiment
+cat experiment/hardlink.txt
+cat experiment/softlink.txt
+
+Outputs Observed:
+[ls -li output]
+37752385 -rw-r--r--@ 1 vanshjagetia  staff  64 Jul  3 22:34 hardlink.txt
+37752388 lrwxr-xr-x@ 1 vanshjagetia  staff  12 Jul  3 22:34 softlink.txt -> original.txt
+
+[cat hardlink.txt output]
+This is the original file containing confidential project data.
+
+[cat softlink.txt output]
+cat: experiment/softlink.txt: No such file or directory
+
+Analysis:
+1. When `rm original.txt` was executed, the OS merely unlinked the name `original.txt` from the inode and decremented the link count from 2 to 1. 
+2. Because the link count was still > 0, the data remained on disk. `cat hardlink.txt` successfully displayed the text.
+3. `softlink.txt` became a "dangling" symbolic link. It blindly tried to resolve the path "original.txt", but that path no longer existed, resulting in a "No such file or directory" error.
+
+--------------------------------------------------------------------------------
+Comparison Table
+--------------------------------------------------------------------------------
+| Feature               | Hard Link                             | Symbolic (Soft) Link                 |
+|-----------------------|---------------------------------------|--------------------------------------|
+| **Inode**             | Shares the exact same inode as target | Has its own unique inode             |
+| **Target**            | Points to the physical data block     | Points to the file path (string)     |
+| **If Target Deleted** | Link still functions perfectly        | Link breaks (dangling link)          |
+| **Link Count**        | Increments the target's link count    | Does not affect target's link count  |
+| **Cross Filesystem**  | Cannot cross partitions/filesystems   | Can link across any filesystem       |
+| **Directory Linking** | Not allowed (prevents recursive loops)| Allowed                              |
+| **Storage Overhead**  | Zero (just a directory entry)         | Very small (stores the path string)  |
+
+--------------------------------------------------------------------------------
+Conclusion & Recommendations
+--------------------------------------------------------------------------------
+The experiment conclusively demonstrates that Linux file deletion is actually "unlinking". Data is only destroyed when the inode link count reaches zero. For the developer who accidentally deleted the file: if a hard link had been created beforehand, the data would have been entirely preserved. 
+
+**Recommendation**: 
+- Use **symbolic links** for convenience, shortcuts, and cross-partition referencing. 
+- Use **hard links** for resilient backups and deduplication within the same filesystem. 
+================================================================================
