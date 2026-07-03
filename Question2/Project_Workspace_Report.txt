@@ -1,0 +1,154 @@
+================================================================================
+                    SECURE PROJECT WORKSPACE SETUP REPORT
+================================================================================
+Student Name: Vansh Jagetia
+Date: July 03, 2026
+
+--------------------------------------------------------------------------------
+Objective
+--------------------------------------------------------------------------------
+The objective of this report is to demonstrate the practical application of Linux file system permissions and ownership. The goal is to establish a secure project workspace that properly restricts access to confidential project files, configuration settings, and reports, ensuring data integrity and security.
+
+--------------------------------------------------------------------------------
+Scenario
+--------------------------------------------------------------------------------
+A project team requires a secure workspace for storing confidential project files and documentation. As a Linux Support Engineer, this workspace was created, and appropriate permissions were configured to protect sensitive information from unauthorized access.
+
+--------------------------------------------------------------------------------
+1. Directory Structure Created
+--------------------------------------------------------------------------------
+Command Executed:
+mkdir -p workspace/project_docs workspace/reports workspace/config workspace/logs
+touch workspace/project_docs/requirements.txt workspace/project_docs/notes.txt workspace/reports/weekly_report.txt workspace/config/settings.conf workspace/logs/project.log
+ls -lR workspace
+
+Actual Output:
+total 0
+drwxr-xr-x@ 3 vanshjagetia  staff   96 Jul  3 22:20 config
+drwxr-xr-x@ 3 vanshjagetia  staff   96 Jul  3 22:20 logs
+drwxr-xr-x@ 4 vanshjagetia  staff  128 Jul  3 22:20 project_docs
+drwxr-xr-x@ 3 vanshjagetia  staff   96 Jul  3 22:20 reports
+
+workspace/config:
+total 0
+-rw-r--r--@ 1 vanshjagetia  staff  0 Jul  3 22:20 settings.conf
+
+workspace/logs:
+total 0
+-rw-r--r--@ 1 vanshjagetia  staff  0 Jul  3 22:20 project.log
+
+workspace/project_docs:
+total 0
+-rw-r--r--@ 1 vanshjagetia  staff  0 Jul  3 22:20 notes.txt
+-rw-r--r--@ 1 vanshjagetia  staff  0 Jul  3 22:20 requirements.txt
+
+workspace/reports:
+total 0
+-rw-r--r--@ 1 vanshjagetia  staff  0 Jul  3 22:20 weekly_report.txt
+
+Explanation:
+The directory structure is organized into logical functional areas: `config` for settings, `logs` for audit trails, `project_docs` for active work, and `reports` for finalized deliverables. This separation of concerns allows administrators to apply tailored security permissions to specific categories of data without affecting the entire project repository.
+
+--------------------------------------------------------------------------------
+2. File Permissions Before Modification
+--------------------------------------------------------------------------------
+Observation:
+When the files and directories were initially created, they inherited default permissions. Directories were created with `drwxr-xr-x` (755) and files with `-rw-r--r--` (644). 
+
+Explanation of Permission Fields:
+- **File Type**: The first character indicates the type ('d' for directory, '-' for regular file).
+- **Owner (User)**: The next three characters (`rwx`) dictate the owner's privileges. 'r' allows reading contents, 'w' allows modifying or deleting, and 'x' allows execution (or traversing, in the case of directories).
+- **Group**: The middle three characters apply to members of the file's group. For instance, `r-x` means group members can read and execute, but cannot write.
+- **Others (World)**: The final three characters apply to anyone else on the system.
+
+In our initial state, any user on the system could navigate into `project_docs` and read `requirements.txt`, which violates the security requirement for confidential data.
+
+--------------------------------------------------------------------------------
+3. Modify Permissions
+--------------------------------------------------------------------------------
+Commands Executed:
+chmod 700 workspace/project_docs
+chmod 600 workspace/config/settings.conf
+chmod 640 workspace/reports/weekly_report.txt
+chmod 750 workspace/logs
+ls -lR workspace
+
+Actual Output:
+total 0
+drwxr-xr-x@ 3 vanshjagetia  staff   96 Jul  3 22:20 config
+drwxr-x---@ 3 vanshjagetia  staff   96 Jul  3 22:21 logs
+drwx------@ 4 vanshjagetia  staff  128 Jul  3 22:21 project_docs
+drwxr-xr-x@ 3 vanshjagetia  staff   96 Jul  3 22:21 reports
+
+workspace/config:
+total 0
+-rw-------@ 1 vanshjagetia  staff  0 Jul  3 22:20 settings.conf
+
+workspace/logs:
+total 0
+-rw-r--r--@ 1 vanshjagetia  staff  0 Jul  3 22:20 project.log
+
+workspace/project_docs:
+total 0
+-rw-r--r--@ 1 vanshjagetia  staff  0 Jul  3 22:20 notes.txt
+-rw-r--r--@ 1 vanshjagetia  staff  0 Jul  3 22:20 requirements.txt
+
+workspace/reports:
+total 0
+-rw-r-----@ 1 vanshjagetia  staff  0 Jul  3 22:20 weekly_report.txt
+
+Observation and Comparison:
+- **`workspace/project_docs`**: Changed from `drwxr-xr-x` (755) to `drwx------` (700). Now only the owner can access or view contents inside the directory.
+- **`settings.conf`**: Changed from `-rw-r--r--` (644) to `-rw-------` (600). Group and others can no longer read this sensitive configuration.
+- **`weekly_report.txt`**: Changed from `-rw-r--r--` (644) to `-rw-r-----` (640). Others cannot read it, but group members retain read access.
+- **`workspace/logs`**: Changed from `drwxr-xr-x` (755) to `drwxr-x---` (750). Others are completely blocked from traversing the logs directory.
+
+--------------------------------------------------------------------------------
+4. Ownership Details
+--------------------------------------------------------------------------------
+Command Executed:
+ls -ld workspace/project_docs
+
+Actual Output:
+drwx------@ 4 vanshjagetia  staff  128 Jul  3 22:21 workspace/project_docs
+
+Observation:
+The owner of the directory is `vanshjagetia`, and the assigned group is `staff`. 
+
+Explanation:
+- **Owner**: The user who possesses absolute control over the file/directory's metadata, including the ability to change its permissions (using `chmod`).
+- **Group**: A collection of users who share a specific set of privileges (the group permissions). 
+- **Importance**: Ownership mathematically anchors the permission model. If ownership falls into the wrong hands, the owner can easily grant world-readable permissions. 
+Note: To change ownership (using `chown`), standard Linux security mandates root (`sudo`) privileges to prevent users from maliciously assigning their files to administrators or bypassing disk quotas. Since this is a restricted user environment, a demonstration of `chown` was deliberately bypassed to adhere to system constraints.
+
+--------------------------------------------------------------------------------
+5. Umask
+--------------------------------------------------------------------------------
+Commands Executed:
+umask
+umask 077
+touch workspace/umask_test.txt
+ls -l workspace/umask_test.txt
+umask 022
+
+Actual Output:
+022
+-rw-------@ 1 vanshjagetia  staff  0 Jul  3 22:21 workspace/umask_test.txt
+
+Explanation:
+- **What is umask?**: The User File-Creation Mode Mask (umask) determines the default permissions newly created files and directories will receive.
+- **Calculation**: Linux starts with a base of 666 for files and 777 for directories. It subtracts the umask value from the base. For example, `666 - 022 = 644` (rw-r--r--).
+- **Effect**: By temporarily changing the umask to `077`, the calculation became `666 - 077 = 600`. When `umask_test.txt` was created, it securely defaulted to `-rw-------`, meaning no one but the owner had access. The umask was then restored to the system default of `022`.
+
+--------------------------------------------------------------------------------
+6. Explanation of Linux Permissions
+--------------------------------------------------------------------------------
+- **Numeric vs Symbolic**: Permissions can be defined using symbols (e.g., `u+x` adds execute to the user) or numeric octals (e.g., `755`). In octal, Read=4, Write=2, Execute=1. `7` (4+2+1) means read/write/execute.
+- **Security Implications**: Secure permissions form the first line of defense against lateral movement in a compromised system. Improper permissions (like world-writable scripts) can easily expose confidential project configurations, credentials, or allow unauthorized code execution.
+- **Best Practices**: Always follow the Principle of Least Privilege. Restrict configuration files to `600`, grant group read access (`640` or `750`) only when collaboration is necessary, and never use `777` outside of isolated `/tmp` environments.
+
+--------------------------------------------------------------------------------
+Conclusion & Recommendations
+--------------------------------------------------------------------------------
+By utilizing `chmod` and understanding `umask`, the project workspace is now mathematically locked down. It is highly recommended to periodically audit these directories using automated scripts to ensure permissions have not drifted from their intended secure baselines.
+================================================================================
